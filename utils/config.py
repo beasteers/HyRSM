@@ -182,53 +182,9 @@ class Config(object):
             args : the command in which the overriding attributes are set.
             cfg (dict): the loaded cfg from files.
         """
-        assert len(args.opts) % 2 == 0, 'Override list {} has odd length: {}.'.format(
-            args.opts, len(args.opts)
-        )
-        keys = args.opts[0::2]
-        vals = args.opts[1::2]
-
-        # maximum supported depth 3
-        for idx, key in enumerate(keys):
-            key_split = key.split('.')
-            assert len(key_split) <= 4, 'Key depth error. \nMaximum depth: 3\n Get depth: {}'.format(
-                len(key_split)
-            )
-            assert key_split[0] in cfg.keys(), 'Non-existant key: {}.'.format(
-                key_split[0]
-            )
-            if len(key_split) == 2:
-                assert key_split[1] in cfg[key_split[0]].keys(), 'Non-existant key: {}.'.format(
-                    key
-                )
-            elif len(key_split) == 3:
-                assert key_split[1] in cfg[key_split[0]].keys(), 'Non-existant key: {}.'.format(
-                    key
-                )
-                assert key_split[2] in cfg[key_split[0]][key_split[1]].keys(), 'Non-existant key: {}.'.format(
-                    key
-                )
-            elif len(key_split) == 4:
-                assert key_split[1] in cfg[key_split[0]].keys(), 'Non-existant key: {}.'.format(
-                    key
-                )
-                assert key_split[2] in cfg[key_split[0]][key_split[1]].keys(), 'Non-existant key: {}.'.format(
-                    key
-                )
-                assert key_split[3] in cfg[key_split[0]][key_split[1]][key_split[2]].keys(), 'Non-existant key: {}.'.format(
-                    key
-                )
-
-
-            if len(key_split) == 1:
-                cfg[key_split[0]] = vals[idx]
-            elif len(key_split) == 2:
-                cfg[key_split[0]][key_split[1]] = vals[idx]
-            elif len(key_split) == 3:
-                cfg[key_split[0]][key_split[1]][key_split[2]] = vals[idx]
-            elif len(key_split) == 4:
-                cfg[key_split[0]][key_split[1]][key_split[2]][key_split[3]] = vals[idx]
-            
+        assert len(args.opts) % 2 == 0, f'Override list {args.opts} has odd length: {len(args.opts)}.'
+        for key, value in zip(args.opts[0::2], args.opts[1::2]):
+            _set_recursive(cfg, key, value)
         return cfg
     
     def _update_dict(self, cfg_dict):
@@ -264,6 +220,16 @@ class Config(object):
     def deep_copy(self):
         return copy.deepcopy(self)
     
+
+def _set_recursive(config, key, value):
+    c = config
+    keys = key.split('.')
+    for k in keys[:-1]:
+        assert k in c, f'Non-existant key: {key} - {k} in {set(c)}.'
+        c = c[k]
+    c[keys[-1]] = value
+    return config
+
 if __name__ == '__main__':
     # debug
     cfg = Config(load=True)

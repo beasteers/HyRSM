@@ -22,6 +22,16 @@ import utils.logging as logging
 logger = logging.get_logger(__name__)
 
 
+
+def call_recursive(func, xs, *a, **kw):
+    if isinstance(xs, dict):
+        return {k: call_recursive(func, x, *a, **kw) for k, x in xs.items()}
+    if isinstance(xs, (list, tuple)):
+        return [call_recursive(func, x, *a, **kw) for x in xs]
+    return func(xs, *a, **kw)
+
+
+
 def check_nan_losses(loss):
     """
     Determine whether the loss is NaN (not a number).

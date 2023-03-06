@@ -1,0 +1,10 @@
+_BASE: ./HyRSM_SSv2_Full_x_shot_v1.yaml
+TRAIN:
+  ENABLE: False
+  SHOT: 5
+  QUERY_PER_CLASS: 3  # 7
+
+VIDEO:
+  HEAD:
+    NAME: CNN_HyRSM_5shot
+OUTPUT_DIR: output/HyRSM_SSv2_Full_5shot

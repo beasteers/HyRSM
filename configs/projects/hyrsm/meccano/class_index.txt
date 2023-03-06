@@ -1,0 +1,12 @@
+align
+browse
+check
+fit
+loosen
+plug
+pull
+put
+screw
+take
+tighten
+unscrew

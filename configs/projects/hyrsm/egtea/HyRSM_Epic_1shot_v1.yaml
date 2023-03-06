@@ -1,0 +1,9 @@
+_BASE: ./HyRSM_Epic_x_shot_v1.yaml
+TRAIN:
+  SHOT: 1
+  QUERY_PER_CLASS: 7  # 7
+
+VIDEO:
+  HEAD:
+    NAME: CNN_HyRSM_1shot
+OUTPUT_DIR: output/HyRSM_Egtea_1shot 

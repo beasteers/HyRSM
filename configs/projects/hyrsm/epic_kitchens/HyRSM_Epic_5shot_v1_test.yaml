@@ -1,0 +1,11 @@
+_BASE: ./HyRSM_Epic_x_shot_v1.yaml
+TRAIN:
+  ENABLE: false
+  SHOT: 5
+  QUERY_PER_CLASS: 3  # 7
+  CHECKPOINT_FILE_PATH: output/HyRSM_Epic_5shot/checkpoints/checkpoint_epoch_00005.pyth
+
+VIDEO:
+  HEAD:
+    NAME: CNN_HyRSM_5shot
+OUTPUT_DIR: output/HyRSM_Epic_5shot_test

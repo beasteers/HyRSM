@@ -219,14 +219,18 @@ class BaseVideoDataset(torch.utils.data.Dataset):
             success         (bool):         flag for the indication of success or not.
         """
         tmp_file = str(round(time.time() * 1000)) + video_path.split('/')[-1]  
+        vr = None
+        file_to_remove = []
         try:
-            vr = None
             tmp_file = self._get_object_to_file(video_path, tmp_file, read_from_buffer=True, num_retries=1 if self.split == "train" else 20)
-            vr = VideoReader(tmp_file)
+            file_to_remove = [tmp_file] if video_path[:3] == "oss" else [None] # if not downloaded from oss, then no files need to be removed
+            vr = VideoReader(tmp_file, num_threads=1)
             success = True
-        except:
+        except Exception as e:
             success = False
-        file_to_remove = [tmp_file] if video_path[:3] == "oss" else [None] # if not downloaded from oss, then no files need to be removed
+            bu.clear_tmp_file(file_to_remove)
+            file_to_remove = []
+            raise 
         return vr, file_to_remove, success
 
     def _decode_video(self, sample_info, index, num_clips_per_video=1):
@@ -254,11 +258,10 @@ class BaseVideoDataset(torch.utils.data.Dataset):
             clip_idx = -1
             self.spatial_idx = 0
         elif self.split == "test" or self.split == "submission":
-            clip_idx = self._spatial_temporal_index[index] // self.cfg.TEST.NUM_SPATIAL_CROPS
-            if self.cfg.TEST.NUM_SPATIAL_CROPS == 1:
-                self.spatial_idx = 0
-            else:
-                self.spatial_idx = self._spatial_temporal_index[index] % self.cfg.TEST.NUM_SPATIAL_CROPS
+            # XXX: few shot data loader breaks this sometimes
+            st_idx = self._spatial_temporal_index[index % len(self._spatial_temporal_index)]
+            clip_idx = st_idx // self.cfg.TEST.NUM_SPATIAL_CROPS
+            self.spatial_idx = st_idx % self.cfg.TEST.NUM_SPATIAL_CROPS
 
         frame_list= []
         for idx in range(num_clips_per_video):
@@ -270,14 +273,18 @@ class BaseVideoDataset(torch.utils.data.Dataset):
                 clip_idx,
                 random_sample=True if self.split=="train" else False 
             )
-            frames = None
-            frames = dlpack.from_dlpack(vr.get_batch(list_).to_dlpack()).clone()
+            frames = self._to_tensor(vr.get_batch(list_)).clone()
             frame_list.append(frames)
         frames = torch.stack(frame_list)
         if num_clips_per_video == 1:
             frames = frames.squeeze(0)
         del vr
         return {"video": frames}, file_to_remove, True
+
+    def _to_tensor(self, xs):
+        if isinstance(xs, torch.Tensor):
+            return xs
+        return dlpack.from_dlpack(xs.to_dlpack())
 
     def _read_image(self, path, index):
         """
@@ -397,7 +404,7 @@ class BaseVideoDataset(torch.utils.data.Dataset):
             "ssv2" in self.cfg.TRAIN.DATASET and \
             self.cfg.AUGMENTATION.SSV2_FLIP):
             if random.random() < 0.5:
-                data["video"] = torchvision.transforms._functional_video.hflip(data["video"])
+                data["video"] = torchvision.transforms.functional.hflip(data["video"])
                 label_transforms = {
                     86: 87,
                     87: 86,
@@ -503,9 +510,13 @@ class BaseVideoDataset(torch.utils.data.Dataset):
                 index = [random.randint(ind*interval, ind*interval+interval-1) for ind in range(num_frames)]
                 return index
             elif self.cfg.DATA.SAMPLING_RATE >40:  # SAMPLING_RATE_TEST
-                interval = vid_length//num_frames
+                interval = max(vid_length//num_frames, 1)
                 clip_length = vid_length//num_frames * num_frames
-                index = [random.randint(ind*interval, ind*interval+interval-1) for ind in range(num_frames)]
+                index = [
+                    int(np.round(random.uniform(
+                        ind*(vid_length/num_frames), 
+                        (ind+1)*(vid_length/num_frames)-1)))
+                    for ind in range(num_frames)]
                 return index
             else:
             # transform FPS

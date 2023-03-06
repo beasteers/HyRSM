@@ -41,6 +41,7 @@ def _prepare_data(cfg):
     
     run_list = []
     if cfg.TRAIN.ENABLE:
+        print("TRAIN IS ENABLED", cfg.TRAIN.ENABLE)
         # Training process is performed by the entry function defined above.
         run_list.append([cfg.deep_copy(), train_func])
     
